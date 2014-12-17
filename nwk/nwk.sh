@@ -55,11 +55,18 @@ ip link set ethu netns $PID
 # Create a linked file entry for net NS e.g. we can execute ip netns exec $PID cmd
 ln -s /proc/$PID/ns/net /var/run/netns/$PID
 ip netns exec $PID ip link set ethu name eth0
+
 # bring up the links on both ends
 ip link set ethb up
 ip netns exec $PID ip link set eth0 up
 ip addr add 10.1.1.2/32 dev ethb
 ip route add 10.1.1.1/32 dev ethb
+# Validate the creation of the eth0 link with IP addr in container
+# attach: attach to running container with stdin open unless --no-stdin=true
+# cmd:    ifconfig eth0 -> stdin of u -> bash shell of u
+# logs:   fetch the logs of a container
+echo 'ifconfig eth0' | docker attach u && docker logs u | head -2 | tail -1
+
 ip netns exec $PID ip addr add 10.1.1.1/32 dev eth0
 ip netns exec $PID ip route add 10.1.1.2/32 dev eth0
 if /bin/ping -c1 -W1 10.1.1.1 > /dev/null 2>&1; then
