@@ -1,0 +1,120 @@
+#################
+# VM Management #
+#################
+# Utilities necessary for VM networking or Virtualization feature validation
+# cpu-checker - tools to help evaluate certain CPU (or BIOS) features
+# bridge-utils - Utilities for configuring the Linux Ethernet bridge
+sudo apt-get install -y cpu-checker bridge-utils 
+
+# QEMU - QEMU Full virtualization on x86 hardware
+# libvirt-bin - Programs for the libvirt library
+sudo apt-get install -y qemu-kvm libvirt-bin bridge-utils 
+
+# The advanced networking options of libvirt-bin accessible 
+# only to users belonging to libvirtd group
+# logout and login to ensure the command takes effect as 
+# can be easily validate by running the groups command
+sudo adduser $USER libvirtd kvm
+
+# virtinst - Programs to create and clone virtual machines
+sudo apt-get install -y virtinst 
+
+# Optional
+# virt-manager - desktop application for managing virtual machines
+# virt-viewer - Displaying the graphical console of a virtual machine
+sudo apt-get install -y virt-manager
+sudo apt-get install -y virt-viewer
+
+########################################
+# VM Image Create, Install, Start, ... #
+########################################
+# Ensure that directories with disk image, ISO, etc has RWX permissions for everyone
+chmod -R 777 /home/asarcar/VMs
+
+# 1. Create an empty disk image
+qemu-img create -f qcow2 /home/asarcar/VMs/VMdisks/UbuntuMaster.qcow2 8G
+
+# 2. Option 1: Install a bootable image via a CDROM ISO: Go through the usual boot install process
+#    If the disk image has root based on an LVM partition, note the benefits 
+#    of using qcow2 (Copy of Write) is limited in combination with LVM. 
+#    LVM is an indirection layer where the disk device is mapped to a file (LVM). 
+#    The space compression benefits of COW are observed when disk block writes
+#    actual usage is sparsed. That algorithm is compromised where the underlying
+#    partition space is occupied by the LVM file.
+virt-install --virt-type kvm --name UbuntuMaster --ram 512 --cdrom=/home/asarcar/VMs/ISOs/ubuntu-14.04.1-server-amd64.iso --disk /home/asarcar/VMs/VMdisks/UbuntuMaster.qcow2,format=qcow2 --network network:default --os-type=linux --os-variant=ubuntutrusty 
+# OR 
+# 2. Option 2: Import an already created bootable image into libvirt
+virt-install --virt-type kvm --name UbuntuMaster --ram 512 --disk /home/asarcar/VMs/VMdisks/UbuntuMaster.qcow2,format=qcow2 --network network:default --os-type=linux --os-variant=ubuntutrusty --import
+
+# 3. Edit the XML file for appropriate networking options:
+# Example: Add two network ports. 
+# i)  Port-1 (eth0): connected to local LAN via the host bridge.
+# ii) Port-2 (eth1): uses the default NAT option to connect to default host bridge created by libvirtd.
+#
+# Option 1: Edit the VM definition file within virsh
+virsh edit UbuntuMaster
+# Option 2: Edit the VM definition file offline and then import (via define command)
+virsh dumpxml UbuntuMaster > UbuntuMaster.xml
+virsh define UbuntuMaster.xml
+#
+# Edit the <domain> <devices> <interface> section
+#   <interface type='bridge'>
+#      <mac address='52:54:00:88:58:ec'/>
+#      <source bridge='br0'/>
+#      <model type='virtio'/>
+#      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+#    </interface>
+#   <interface type='network'>
+#      <mac address='52:54:00:88:58:ed'/>
+#      <source network='default'/>
+#      <model type='virtio'/>
+#      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+#    </interface>
+
+# 4. Start the VM
+virsh start UbuntuMaster
+
+# 5. The second interface is not brought up by the host image. 
+#    Attach to Guest via console edit guest file: /etc/network/interfaces     
+virt-viewer UbuntuMaster
+printf "# Secondary network interface: NAT\nauto eth1\niface eth1 inet dhcp" | sudo tee -a /etc/network/interfaces > /dev/null
+
+# 6. Validate the VM is working by rebooting VM: shutdown the VM, start the VM, run tests (ping/ssh, etc).
+#    Optional: Modify the user:group of the qcow file - software by default maps it to root:root
+virsh shutdown UbuntuMaster
+sudo chown libvirt-qemu:kvm UbuntuMaster.qcow2
+virsh start UbuntuMaster
+
+################################
+# VM Image Clone, Rebase, etc. #
+################################
+# 1. Before cloning the Master Image: we must ensure the disk image does not change by not having
+#    any VM point to the disk image. If any are pointing shut them down and never use it as a 
+#    reference for any VM
+virsh shutdown UbuntuMaster
+
+# 2. Use the disk image as clone base. Create other images.
+#    Validate the clone image (e.g. aphrodite.qcow2) takes very little space
+qemu-img create -f qcow2 -o backing_file=UbuntuMaster.qcow2 aphrodite.qcow2
+
+# 3. Create a new VM definition file by using another one as basis.
+#    Edit the Name, UUID, SourceFile, and Network MAC-Address section of the XML file
+virsh dumpxml UbuntuMaster > aphrodite.xml
+
+# 4. Import the VM definition
+virsh define aphrodite.xml
+
+# 5. Start the VM, edit the /etc/hosts and /etc/hostname section to update the self machine name
+virsh start aphrodite
+
+# 5. Restart the VM and validate sanity by running (ping, ssh, etc) tests
+#    Validate the clone disk image (aphrodite.qcow2) is growing and timestamp is changing 
+#    whereas the base disk image (UbuntuMaster.qcow2) is not changing in any way.
+#    Optional: Modify the user:group of the qcow file - software by default maps it to root:root
+virsh shutdown aphrodite
+sudo chown libvirt-qemu:kvm aphrodite.qcow2
+virsh start aphrodite
+
+
+
+
