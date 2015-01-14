@@ -1,7 +1,7 @@
 <domain type='kvm'>
   <name>veos</name>
-  <memory unit='KiB'>2097152</memory>
-  <currentMemory unit='KiB'>2097152</currentMemory>
+  <memory unit='KiB'>524288</memory>
+  <currentMemory unit='KiB'>524288</currentMemory>
   <vcpu placement='static'>1</vcpu>
   <resource>
     <partition>/machine</partition>
@@ -24,14 +24,14 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='vmdk'/>
-      <source file='/var/lib/libvirt/images/eos-4.13.3-veos.vmdk'/>
+      <source file='/home/asarcar/VMs/VMdisks/EOS-4.12.5-vEOS.vmdk'/>
       <target dev='hda' bus='ide'/>
       <alias name='ide0-0-0'/>
       <address type='drive' controller='0' bus='0' target='0' unit='0'/>
     </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file='/var/lib/libvirt/images/aboot-veos-2.0.8.iso'/>
+      <source file='/home/asarcar/VMs/ISOs/Aboot-veos-2.0.8.iso'/>
       <target dev='hdc' bus='ide'/>
       <readonly/>
       <alias name='ide0-1-0'/>
@@ -48,19 +48,19 @@
       <alias name='ide0'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
     </controller>
-    <interface type='network'>
-      <source network='br-ex' portgroup='management'/>
-      <model type='e1000'/>
+    <interface type='bridge'>
+      <source bridge='br-mgmt'/>
+      <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
     </interface>
     <interface type='network'>
-      <source network='br-ex' portgroup='trunked'/>
-      <model type='e1000'/>
+      <source network='default'/>
+      <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
     </interface>
     <interface type='network'>
-      <source network='br-ex' portgroup='trunked'/>
-      <model type='e1000'/>
+      <source network='default'/>
+      <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </interface>
     <serial type='pty'>

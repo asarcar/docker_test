@@ -1,6 +1,6 @@
 <domain type='kvm'>
   <name>aphrodite</name>
-  <uuid>5786ffd0-9538-59b9-9f0c-5bbe51b7780c</uuid>
+  <uuid>5972fe6b-c156-c20e-c52c-021b55310a3a</uuid>
   <memory unit='KiB'>524288</memory>
   <currentMemory unit='KiB'>524288</currentMemory>
   <vcpu placement='static'>1</vcpu>
@@ -29,6 +29,9 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
     <controller type='pci' index='0' model='pci-root'/>
+    <controller type='ide' index='0'>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
     <interface type='bridge'>
       <mac address='52:54:00:88:58:ec'/>
       <source bridge='br0'/>
